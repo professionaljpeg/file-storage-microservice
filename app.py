@@ -41,6 +41,17 @@ def upload_file():
         }), 201
 
 
+@app.route('/api/v1/files/<filename>', methods=['GET'])
+def download_file(filename):
+    """Endpoint to download a file."""
+    try:
+        # send_from_directory safely serves files from the specified folder
+        return send_from_directory(app.config['UPLOAD_FOLDER'],
+                                   filename, as_attachment=True)
+    except FileNotFoundError:
+        return jsonify({'error': 'File not found'}), 404
+
+
 if __name__ == '__main__':
     # Run the microservice on port 5000
     app.run(host='0.0.0.0', port=5000, debug=True)

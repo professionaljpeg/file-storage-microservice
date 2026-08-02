@@ -52,6 +52,32 @@ def download_file(filename):
         return jsonify({'error': 'File not found'}), 404
 
 
+@app.route('/api/v1/files/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    """Endpoint to delete a file."""
+    # Sanitize the filename to prevent directory traversal attacks
+    safe_filename = secure_filename(filename)
+
+    if not safe_filename:
+        return jsonify({'error': 'Invalid filename'}), 400
+
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+
+    # Check if the file actually exists before trying to delete it
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'File not found'}), 404
+
+    try:
+        # Remove the file from the filesystem
+        os.remove(file_path)
+        return jsonify(
+            {'message': f'File {safe_filename} deleted successfully'}), 200
+    except Exception:
+        # Catch potential OS errors (e.g., file is locked by another process)
+        return jsonify(
+            {'error': 'An error occurred while deleting the file'}), 500
+
+
 if __name__ == '__main__':
     # Run the microservice on port 5000
     app.run(host='0.0.0.0', port=5000, debug=True)

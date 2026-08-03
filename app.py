@@ -1,5 +1,8 @@
 import os
-from flask import Flask, request, jsonify, send_from_directory
+from functools import wraps
+from flask import Flask, request, jsonify, abort, send_from_directory, render_template
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -13,6 +16,9 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Ensure that the storage directory exists when the app starts
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+@app.route('/')
+def root():
+    return render_template('index.html')
 
 @app.route('/api/v1/files', methods=['POST'])
 def upload_file():
@@ -79,5 +85,5 @@ def delete_file(filename):
 
 
 if __name__ == '__main__':
-    # Run the microservice on port 5000
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 12627))
+    app.run(host="classwork.engr.oregonstate.edu", port=port, debug=True)

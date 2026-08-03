@@ -1,4 +1,5 @@
 import os
+import database.db_connector as db
 from functools import wraps
 from flask import Flask, request, jsonify, abort, send_from_directory, render_template
 from flask_sqlalchemy import SQLAlchemy
@@ -6,6 +7,8 @@ from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
+db_connection = db.connect_to_database()
 
 # Directory where files will be stored locally
 UPLOAD_FOLDER = 'storage'

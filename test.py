@@ -19,7 +19,6 @@ with open('document.pdf', 'rb') as f:
 response = requests.get(file_url)
 
 if response.status_code == 200:
-    # Save the file to disk instead of printing binary to the terminal
     with open('downloaded_test.pdf', 'wb') as f:
         f.write(response.content)
     print("Success: File downloaded and saved as 'downloaded_test.pdf'")

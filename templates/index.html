@@ -8,10 +8,13 @@
         <h1>File Storage Microservice is running!</h1>
 
         <h3>Generate API key</h3>
-        <label for="appName">App Name:</label>
-        <input type="text" id="appName" name="appName"><br><br>
-        <input type="submit" id="submit" name="submit"><br><br>
+        <form method="POST" action="/generate_key">
+            <label for="appName">App Name:</label>
+            <input type="text" id="appName" name="appName"><br><br>
+            <input type="submit" value="Generate Key"><br><br>
+        </form>
 
-        <h3>Generated API Key: <div id="apiKey"></div></h3>
+        <h3>Generated API Key: {{api_key}}</h3>
+        <h5>Please store this key somewhere in your program, or in a separate text file, as it won't be shown again.</h5>
     </body>
 </html>

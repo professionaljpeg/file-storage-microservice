@@ -8,7 +8,7 @@ def create_api_key(client_name: str) -> str:
     """Generates a secure API key, hashes the secret part, 
     and saves the record to the database."""
     
-    #  Generate the public KeyID (16 hex chars) and secret string
+    # Generate the public KeyID (16 hex chars) and secret string
     key_id = secrets.token_hex(8) 
     secret = secrets.token_urlsafe(32)   
     

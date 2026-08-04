@@ -1,9 +1,10 @@
 import os
+import secrets
 import database.db_connector as db
 from functools import wraps
 from flask import Flask, request, jsonify, abort, send_from_directory, render_template
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -19,11 +20,73 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Ensure that the storage directory exists when the app starts
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+def create_api_key(client_name: str) -> str:
+    """Generates a secure API key, hashes the secret part, 
+    and saves the record to the database."""
+    
+    # Generate the public KeyID (16 hex chars) and secret string
+    keyID = secrets.token_hex(8) 
+    secret = secrets.token_urlsafe(32)   
+    
+    # Hash the secret part using Werkzeug
+    secret_hash = generate_password_hash(secret)
+    
+    query = f"INSERT INTO api_keys (keyID, username, secretHash) VALUES (%s, %s, %s);"
+
+    cur = db.execute_query(db_connection, query, (keyID, client_name, secret_hash))
+    print(cur)
+
+    # Return the full key in the 'KeyID.Secret' format
+    return f"{keyID}.{secret}"
+
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('X-API-Key')
+        
+        if not api_key or '.' not in api_key:
+            return jsonify({"error": "Invalid API key format"}), 401
+            
+        keyId, secret = api_key.split('.', 1)
+        
+        query = "SELECT * FROM api_keys WHERE keyID = %s LIMIT 1;"
+        cursor = db.execute_query(db_connection, query, (keyId,))
+        api_key_record = cursor.fetchone()
+        
+        # If the record exists, verify the hash against the secret
+        if api_key_record and check_password_hash(api_key_record['secretHash'], secret):
+            return f(*args, **kwargs)
+        else:
+            return jsonify({"error": "Invalid or missing API key"}), 401
+            
+    return decorated_function
+
 @app.route('/')
 def root():
-    return render_template('index.html')
+    return render_template('index.html', api_key='')
+
+@app.route('/generate_key', methods=['POST'])
+def generate_key():
+    client_name = request.form.get('appName')
+    if client_name.strip() == '':
+        return render_template('index.html', api_key="Invalid App Name")
+
+    query = "SELECT * FROM api_keys WHERE username = %s LIMIT 1;"
+    cursor = db.execute_query(db_connection, query, (client_name,))
+    client_name_record = cursor.fetchone()
+
+    if client_name_record:
+        query = "SELECT keyID, secretHash FROM api_keys WHERE username = %s;"
+        cursor = db.execute_query(db_connection, query, (client_name,))
+        clientAPIKey = cursor.fetchone()
+        return render_template('index.html', api_key="App already has API key")
+
+    api_key = create_api_key(client_name)
+    
+    return render_template('index.html', api_key=api_key)
 
 @app.route('/api/v1/files', methods=['POST'])
+@require_api_key
 def upload_file():
     """Endpoint to upload a file."""
     # Check if the HTTP request contains a file payload
@@ -51,6 +114,7 @@ def upload_file():
 
 
 @app.route('/api/v1/files/<filename>', methods=['GET'])
+#@require_api_key
 def download_file(filename):
     """Endpoint to download a file."""
     try:
@@ -62,6 +126,7 @@ def download_file(filename):
 
 
 @app.route('/api/v1/files/<filename>', methods=['DELETE'])
+#@require_api_key
 def delete_file(filename):
     """Endpoint to delete a file."""
     # Sanitize the filename to prevent directory traversal attacks

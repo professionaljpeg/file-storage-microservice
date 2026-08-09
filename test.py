@@ -1,7 +1,7 @@
 import requests
 
-appName = 'test7'
-headers = {'X-API-Key': '5897376cf290c02b.Fj9-tjRaD2Fa6fwRKt8t4sl2tJpuFGS-fHCxF4CXUuM'}
+appName = 'test100'
+headers = {'X-API-Key': '9a44a942b021c5c0.lr7D3FEXj0dUgKhpUQ9m1uk_FGuk8ezQLVDUSG6ao9s'}
 base_url = 'http://classwork.engr.oregonstate.edu:12627/api/v1/files'
 file_url = f'{base_url}/document.pdf'
 

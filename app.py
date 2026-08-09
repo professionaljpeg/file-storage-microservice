@@ -1,5 +1,6 @@
 import os
 import secrets
+import requests
 import database.db_connector as db
 from functools import wraps
 from flask import Flask, request, jsonify, abort, send_from_directory, render_template
@@ -18,6 +19,7 @@ UPLOAD_FOLDER = 'storage'
 # Limit uploads to 16 Megabytes to prevent abuse
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+AUTH_SERVICE_URL = "http://classwork.engr.oregonstate.edu:12628/api/v1/auth/verify"
 
 # Ensure that the storage directory exists when the app starts
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -46,20 +48,27 @@ def require_api_key(f):
     def decorated_function(*args, **kwargs):
         api_key = request.headers.get('X-API-Key')
         
-        if not api_key or '.' not in api_key:
-            return jsonify({"error": "Invalid API key format"}), 401
+        if not api_key:
+            return jsonify({"error": "Missing API key in headers"}), 401
             
-        keyId, secret = api_key.split('.', 1)
-        
-        query = "SELECT * FROM api_keys WHERE keyID = %s LIMIT 1;"
-        cursor = db.execute_query(db_connection, query, (keyId,))
-        api_key_record = cursor.fetchone()
-        
-        # If the record exists, verify the hash against the secret
-        if api_key_record and check_password_hash(api_key_record['secretHash'], secret):
-            return f(*args, **kwargs)
-        else:
-            return jsonify({"error": "Invalid or missing API key"}), 401
+        try:
+            # Send the API key to the auth microservice via REST
+            response = requests.post(
+                AUTH_SERVICE_URL, 
+                json={"api_key": api_key},
+                timeout=5 # Prevents app.py from hanging if the auth service is down
+            )
+            
+            # Check if the auth service returned a 200 OK and valid status
+            if response.status_code == 200 and response.json().get('valid'):
+                return f(*args, **kwargs)
+            else:
+                # Pass along the 401 Unauthorized if the key was invalid
+                return jsonify({"error": "Invalid API key"}), 401
+                
+        except requests.exceptions.RequestException as e:
+            # Handle the case where the auth microservice is offline
+            return jsonify({"error": "Authentication service is currently unavailable"}), 503
             
     return decorated_function
 

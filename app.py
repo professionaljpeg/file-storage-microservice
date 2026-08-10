@@ -14,9 +14,7 @@ CORS(app)
 
 db_connection = db.connect_to_database()
 
-# Directory where files will be stored locally
 UPLOAD_FOLDER = 'storage'
-# Limit uploads to 16 Megabytes to prevent abuse
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 AUTH_SERVICE_URL = "http://classwork.engr.oregonstate.edu:12628/api/v1/auth/verify"
@@ -40,7 +38,6 @@ def create_api_key(client_name: str) -> str:
     cur = db.execute_query(db_connection, query, (keyID, client_name, secret_hash))
     print(cur)
 
-    # Return the full key in the 'KeyID.Secret' format
     return f"{keyID}.{secret}"
 
 def require_api_key(f):
@@ -52,14 +49,13 @@ def require_api_key(f):
             return jsonify({"error": "Missing API key in headers"}), 401
             
         try:
-            # Send the API key to the auth microservice via REST
+            # Send the API key to the auth microservice
             response = requests.post(
                 AUTH_SERVICE_URL, 
                 json={"api_key": api_key},
                 timeout=5 # Prevents app.py from hanging if the auth service is down
             )
             
-            # Check if the auth service returned a 200 OK and valid status
             if response.status_code == 200 and response.json().get('valid'):
                 return f(*args, **kwargs)
             else:
@@ -67,7 +63,7 @@ def require_api_key(f):
                 return jsonify({"error": "Invalid API key"}), 401
                 
         except requests.exceptions.RequestException as e:
-            # Handle the case where the auth microservice is offline
+            # Handles the case where the auth microservice is offline
             return jsonify({"error": "Authentication service is currently unavailable"}), 503
             
     return decorated_function
@@ -125,11 +121,10 @@ def upload_file():
 
 
 @app.route('/api/v1/files/<filename>', methods=['GET'])
-#@require_api_key
+@require_api_key
 def download_file(filename):
     """Endpoint to download a file."""
     try:
-        # send_from_directory safely serves files from the specified folder
         return send_from_directory(app.config['UPLOAD_FOLDER'],
                                    filename, as_attachment=True)
     except FileNotFoundError:
@@ -137,10 +132,9 @@ def download_file(filename):
 
 
 @app.route('/api/v1/files/<filename>', methods=['DELETE'])
-#@require_api_key
+@require_api_key
 def delete_file(filename):
     """Endpoint to delete a file."""
-    # Sanitize the filename to prevent directory traversal attacks
     safe_filename = secure_filename(filename)
 
     if not safe_filename:
@@ -153,7 +147,6 @@ def delete_file(filename):
         return jsonify({'error': 'File not found'}), 404
 
     try:
-        # Remove the file from the filesystem
         os.remove(file_path)
         return jsonify(
             {'message': f'File {safe_filename} deleted successfully'}), 200

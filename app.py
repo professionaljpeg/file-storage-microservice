@@ -22,6 +22,17 @@ AUTH_SERVICE_URL = "http://classwork.engr.oregonstate.edu:12628/api/v1/auth/veri
 # Ensure that the storage directory exists when the app starts
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+def find_client_name(client_name):
+    query = "SELECT * FROM api_keys WHERE username = %s LIMIT 1;"
+    cursor = db.execute_query(db_connection, query, (client_name,))
+    client_name_record = cursor.fetchone()
+
+    if client_name_record:
+        query = "SELECT keyID, secretHash FROM api_keys WHERE username = %s;"
+        cursor = db.execute_query(db_connection, query, (client_name,))
+        clientAPIKey = cursor.fetchone()
+        return True
+
 def create_api_key(client_name: str) -> str:
     """Generates a secure API key, hashes the secret part, 
     and saves the record to the database."""
@@ -83,14 +94,7 @@ def generate_key():
     if client_name.strip() == '':
         return render_template('index.html', api_key="Invalid App Name")
 
-    query = "SELECT * FROM api_keys WHERE username = %s LIMIT 1;"
-    cursor = db.execute_query(db_connection, query, (client_name,))
-    client_name_record = cursor.fetchone()
-
-    if client_name_record:
-        query = "SELECT keyID, secretHash FROM api_keys WHERE username = %s;"
-        cursor = db.execute_query(db_connection, query, (client_name,))
-        clientAPIKey = cursor.fetchone()
+    if find_client_name(client_name):
         return render_template('index.html', api_key="App already has API key")
 
     api_key = create_api_key(client_name)

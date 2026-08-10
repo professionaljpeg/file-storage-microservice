@@ -23,6 +23,7 @@ AUTH_SERVICE_URL = "http://classwork.engr.oregonstate.edu:12628/api/v1/auth/veri
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def find_client_name(client_name):
+    """Checks if a client has already generated an API key"""
     query = "SELECT * FROM api_keys WHERE username = %s LIMIT 1;"
     cursor = db.execute_query(db_connection, query, (client_name,))
     client_name_record = cursor.fetchone()

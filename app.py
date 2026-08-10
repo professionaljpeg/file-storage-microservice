@@ -43,6 +43,8 @@ def create_api_key(client_name: str) -> str:
 def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        """Sends the API key to the API Authenticator service (big pool)
+        and returns the response"""
         api_key = request.headers.get('X-API-Key')
         
         if not api_key:
@@ -70,10 +72,13 @@ def require_api_key(f):
 
 @app.route('/')
 def root():
+    """Renders frontend directory"""
     return render_template('index.html', api_key='')
 
 @app.route('/generate_key', methods=['POST'])
 def generate_key():
+    """Acts as a go-between for the front-end and the create_api_key
+    function"""
     client_name = request.form.get('appName')
     if client_name.strip() == '':
         return render_template('index.html', api_key="Invalid App Name")
